@@ -1,0 +1,166 @@
+from pandas import *
+
+def getDateString(sheetId):
+    if len(sheetId) < 2:
+        print("unsupported sheetId length: ", len(sheetId), sheetId)
+        exit()
+    elif len(sheetId) == 2:
+        return sheetId[0] + "/" + sheetId[1:2]
+    elif len(sheetId) == 3:
+        if sheetId[0:2] == "10":
+            return sheetId[0:2] + "/" + sheetId[2:3]
+        else:
+            return sheetId[0] + "/" + sheetId[1:3]
+    else:
+        if sheetId[0:2] == "10":
+            return sheetId[0:2] + "/" + sheetId[2:4]
+        else:
+            return sheetId[0] + "/" + sheetId[1:3]
+
+def getUniversalCrop(crop):
+    cropMap = {
+        "Cherry Tomatoes": "Tomatoes (Cherry)",
+        "Head Lettuce": "Lettuce Heads",
+        "Radish": "Radishes",
+        "Winter Radish": "Radishes",
+        "Napa Cabbage": "Cabbage",
+        "Green Cabbage": "Cabbage",
+        "Slicing Tomatoes": "Tomatoes",
+        "Turnip": "Turnips",
+        "Sweet Corn": "Corn",
+        "Curly Kale": "Kale",
+        "Snap Peas": "Peas",
+        "Bok Choy": "Asian Greens",
+        "Lacinato Kale": "Kale",
+        "Easter Egg Radish": "Radishes",
+        "Cucumber": "Cucumbers",
+        "Red Mustard": "Mustard",
+        "Green Mustard": "Mustard",
+    }
+
+    ahCrops = [
+        "Mustard Mix",
+        "Broccoli Rabe",
+        "Scallions",
+        "Apples",
+        "Artichoke",
+        "Arugula",
+        "Asian Greens",
+        "Baby Bok Choy",
+        "Basil",
+        "Beans",
+        "Beets",
+        "Bekana Greens",
+        "Bell Peppers",
+        "Broccoli",
+        "Brussel Sprouts",
+        "Bunching Onions",
+        "Cabbage",
+        "Carrots",
+        "Cauliflower",
+        "Celery",
+        "Celtuce",
+        "chicken eggs",
+        "Chinese Cabbage",
+        "Cilantro",
+        "Collards",
+        "Corn",
+        "Cucumbers",
+        "Dill",
+        "duck eggs",
+        "Dwarf Sunflowers",
+        "Eggplant",
+        "Fava Beans",
+        "Fennel",
+        "Flowers",
+        "Garlic",
+        "Garlic Scapes",
+        "Garden Huckleberries",
+        "Green Garlic",
+        "Ground Cherries",
+        "Heirloom Tomatoes",
+        "Hot Peppers",
+        "Italian Dandelion",
+        "Jalapeno Peppers",
+        "Jerusalem Artichokes",
+        "Kale",
+        "Kale Mix",
+        "Kohlrabi",
+        "Leeks",
+        "Lettuce Heads",
+        "Lettuce Mix",
+        "Lunchbox Peppers",
+        "Malabar Spinach",
+        "Melons",
+        "Mesclun Mix",
+        "Mini Eggplant",
+        "Mini Lettuce",
+        "Mushrooms",
+        "Mustard",
+        "New Zealand Spinach",
+        "Okra",
+        "Onions",
+        "Parsley",
+        "Parsnips",
+        "Peas",
+        "Potatoes",
+        "Pumpkins",
+        "Radicchio",
+        "Radishes",
+        "Salad Mix",
+        "Shallots",
+        "Shishito Peppers",
+        "Spinach",
+        "Summer Squash",
+        "Sweet Peppers",
+        "Sweet Potato",
+        "Swiss Chard",
+        "Tokyo Bekana",
+        "Tomatillos",
+        "Tomatoes",
+        "Tomatoes (cherry)",
+        "Turnips",
+        "Watermelon",
+        "Winter Squash (Acorn)",
+        "Winter Squash (Butternut)",
+        "Winter Squash (Delicata)",
+        "Winter Squash (Kabocha)",
+        "Winter Squash (Spaghetti)",
+        "Winter Squash",
+    ]
+    if crop not in ahCrops and crop not in cropMap:
+        print(crop, " not in ahCrops")
+    if crop in cropMap:
+        return cropMap[crop]
+    else:
+        return crop
+    
+def printWeight(date, cropName, totalWeight, destination):
+    print(date + ", " + cropName + ", " + totalWeight + ", " + destination)
+
+def getWeightsFromSheet(sheet, sheetId, harvestData):
+    if not sheetId[0].isdigit():
+        print("skipping ", sheetId)
+        return
+    for cropId, crop in sheet['Crop'].items():
+        if pandas.isna(crop):
+            continue
+        
+        dateString = getDateString(sheetId) + "/21"
+        totalWeight = sheet['Total Weight'][cropId]
+        destination = "Fellowship"
+        if totalWeight > 0:
+            universalCrop = getUniversalCrop(crop)
+            printWeight(dateString, universalCrop, totalWeight.astype("str"), destination)
+            harvestData.append([pandas.to_datetime(dateString), universalCrop, totalWeight, destination])
+
+def parseFellows():
+    workbook = ExcelFile("/Users/dylan/Downloads/AF 2021 Fellowship Harvest Tracker.xlsx")
+    harvestData = []
+    for sheetId in workbook.sheet_names:
+        getWeightsFromSheet(workbook.parse(sheetId), sheetId, harvestData)
+
+    pandas.DataFrame(harvestData).to_excel("/Users/dylan/Documents/fellowship_harvest.xlsx", index=False, header=False)
+
+if __name__ == "__main__":
+    parseFellows()
