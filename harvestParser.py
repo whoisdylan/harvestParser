@@ -19,6 +19,16 @@ def getDateString(sheetId):
 
 def getUniversalCrop(crop):
     cropMap = {
+        "Sweet Pepper": "Sweet Peppers",
+        "White Icicle Radish": "Radishes",
+        "Red Kale": "Kale",
+        "Acorn Squash": "Winter Squash (Acorn)",
+        "Melon": "Melons",
+        "Shelling Bean": "Beans",
+        "New Potatoes": "Potatoes",
+        "Baby Spinach": "Spinach",
+        "Globe Eggplant": "Eggplant",
+        "Green Beans": "Beans",
         "Cherry Tomatoes": "Tomatoes (Cherry)",
         "Head Lettuce": "Lettuce Heads",
         "Radish": "Radishes",
@@ -39,6 +49,7 @@ def getUniversalCrop(crop):
     }
 
     ahCrops = [
+        "Oregano",
         "Mustard Mix",
         "Broccoli Rabe",
         "Scallions",
@@ -142,25 +153,54 @@ def getWeightsFromSheet(sheet, sheetId, harvestData):
     if not sheetId[0].isdigit():
         print("skipping ", sheetId)
         return
+
+    # map of destination title in mountain records to destination in our harvest records
+    destinationMap = { "Fellowship": "Fellowship", "Large": "CSA", "Small":
+    "CSA", "Market": "Farmers Market", "Donation": "Donation" }
     for cropId, crop in sheet['Crop'].items():
         if pandas.isna(crop):
             continue
+
+        totalWeight = round(sheet['Total Weight'][cropId], 2)
+        if pandas.isna(totalWeight):
+            continue
         
         dateString = getDateString(sheetId) + "/21"
-        totalWeight = sheet['Total Weight'][cropId]
-        destination = "Fellowship"
-        if totalWeight > 0:
-            universalCrop = getUniversalCrop(crop)
-            printWeight(dateString, universalCrop, totalWeight.astype("str"), destination)
-            harvestData.append([pandas.to_datetime(dateString), universalCrop, totalWeight, destination])
+        unitWeight = sheet['Weight (lb)'][cropId]
+        cropTotal = 0
+        for destinationOld, destinationNew in destinationMap.items():
+            if destinationOld not in sheet:
+                continue
+
+            unitAmount = sheet[destinationOld][cropId]
+            weight = round(unitWeight * unitAmount, 2)
+            if weight > 0:
+                cropTotal += weight
+                universalCrop = getUniversalCrop(crop)
+                printWeight(dateString, universalCrop, weight.astype("str"), destinationNew)
+                harvestData.append([pandas.to_datetime(dateString).date(), universalCrop, weight, destinationNew])
+
+        # sanity check
+        cropTotal = round(cropTotal, 2)
+        if totalWeight != cropTotal:
+            print("***missing weights: ", sheetId, crop, totalWeight, cropTotal)
 
 def parseFellows():
-    workbook = ExcelFile("/Users/dylan/Downloads/AF 2021 Fellowship Harvest Tracker.xlsx")
+    workbook = ExcelFile("/Users/dylan/Documents/AF 2021 Fellowship Harvest Tracker.xlsx")
     harvestData = []
     for sheetId in workbook.sheet_names:
         getWeightsFromSheet(workbook.parse(sheetId), sheetId, harvestData)
 
     pandas.DataFrame(harvestData).to_excel("/Users/dylan/Documents/fellowship_harvest.xlsx", index=False, header=False)
 
+def parseMarkets():
+    workbook = ExcelFile("/Users/dylan/Documents/AF 2021 CSA, Market, and Donation Tracker.xlsx")
+    harvestData = []
+    for sheetId in workbook.sheet_names:
+        getWeightsFromSheet(workbook.parse(sheetId), sheetId, harvestData)
+
+    pandas.DataFrame(harvestData).to_excel("/Users/dylan/Documents/markets_harvest.xlsx", index=False, header=False)
+
 if __name__ == "__main__":
-    parseFellows()
+    # parseFellows()
+    parseMarkets()
